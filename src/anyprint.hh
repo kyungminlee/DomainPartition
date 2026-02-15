@@ -103,6 +103,7 @@ namespace anyprint {
       for (int i = 0; i < indent._n; ++i) {
         os << Ch(' ');
       }
+      return os;
     }
     std::size_t _n;
   };
