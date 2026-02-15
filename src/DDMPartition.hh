@@ -22,6 +22,8 @@ public:
 
   int getNodeCount(int iDomain) const { return _nodesOfDomain[iDomain].size(); }
   int getDomainCount(int iNode) const { return _domainsOfNode[iNode].size(); }
+  int getNode(int iDomain, int iLocalNode) const { return _nodesOfDomain[iDomain][iLocalNode]; }
+
   bool isNodeOwnedBy(int iNode, int iDomain) const;
   int getLocalNodeIndex(int iNode, int iDomain) const;
 
