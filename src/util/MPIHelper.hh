@@ -8,11 +8,11 @@
 /// Exception thrown when an MPI call returns an error code.
 class __attribute__((visibility("default"))) MPIError : public std::runtime_error {
 public:
-  MPIError(char const * name, int ierr) : std::runtime_error(name), _errorcode(ierr) {}
+  MPIError(char const * name, int ierr) : std::runtime_error(name), _code(ierr) {}
   ~MPIError() = default;
-  int errorcode() const { return _errorcode; }
+  int code() const { return _code; }
 public:
-  int _errorcode = MPI_SUCCESS;
+  int _code = MPI_SUCCESS;
 };
 
 /// Lightweight wrapper around an MPI communicator providing common
