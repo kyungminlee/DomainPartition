@@ -8,12 +8,22 @@
 
 namespace NSPC_DDM {
 
+/// @brief Construct a partition with @p nNode global nodes and @p nDomain domains.
+///
+/// Allocates empty node lists for each domain and empty domain lists for each
+/// node. Use setNodesOfDomain() to populate the associations afterward.
 DDMPartition::DDMPartition(int nNode, int nDomain)
   : _nodesOfDomain(nDomain)
   , _domainsOfNode(nNode)
 {
 }
 
+/// @brief Sort and deduplicate all node-domain association lists.
+///
+/// For every domain, sorts its node list and removes duplicates.
+/// For every node, sorts its domain list and removes duplicates.
+/// Should be called after all setNodesOfDomain() calls are complete to ensure
+/// consistent, canonical ordering of the internal data structures.
 void DDMPartition::normalize() {
   for (auto & nodes: _nodesOfDomain) {
     std::sort(nodes.begin(), nodes.end());
@@ -25,6 +35,17 @@ void DDMPartition::normalize() {
   }
 }
 
+/// @brief Assign a list of global node indices to a domain.
+///
+/// Replaces the node list for domain @p iDomain with @p nodeMapping, and
+/// appends @p iDomain to the domain list of each referenced node (the reverse
+/// mapping). Note that this does not clear previous reverse-mapping entries,
+/// so calling this multiple times for the same domain without resetting will
+/// accumulate duplicates. Call normalize() after all domains have been
+/// populated to remove any duplicates.
+///
+/// @param iDomain    The domain index (must be < getDomainCount()).
+/// @param nodeMapping  The global node indices belonging to this domain.
 void DDMPartition::setNodesOfDomain(int iDomain, std::vector<int> const & nodeMapping) {
   assert(iDomain < _nodesOfDomain.size());
   _nodesOfDomain[iDomain] = nodeMapping;
@@ -43,11 +64,29 @@ std::vector<int> const & DDMPartition::getDomains(int iNode) const {
   return _domainsOfNode[iNode];
 }
 
+/// @brief Check whether a global node belongs to a given domain.
+///
+/// Performs a linear search through the domain list of @p iNode.
+/// For normalized partitions the domain lists are sorted, but this
+/// implementation does not exploit that (linear scan).
+///
+/// @param iNode    Global node index.
+/// @param iDomain  Domain index to test membership against.
+/// @return True if @p iNode is listed among the nodes of @p iDomain.
 bool DDMPartition::isNodeOwnedBy(int iNode, int iDomain) const {
   auto const & domains = _domainsOfNode[iNode];
   return std::find(domains.begin(), domains.end(), iDomain) != domains.end();
 }
 
+/// @brief Find the local index of a global node within a domain's node list.
+///
+/// Searches the node list of @p iDomain for @p iNode and returns its
+/// zero-based position. Asserts that the node is found; calling this with
+/// a node that does not belong to the domain is a programming error.
+///
+/// @param iNode    Global node index to look up.
+/// @param iDomain  Domain whose local ordering is queried.
+/// @return The local index (position) of @p iNode in the domain's node list.
 int DDMPartition::getLocalNodeIndex(int iNode, int iDomain) const {
   std::vector<int> const & nodes = _nodesOfDomain[iDomain];
   auto iter = std::find(nodes.begin(), nodes.end(), iNode);
@@ -55,6 +94,23 @@ int DDMPartition::getLocalNodeIndex(int iNode, int iDomain) const {
   return std::distance(nodes.begin(), iter);
 }
 
+/// @brief Build the neighbor information for a single domain.
+///
+/// Iterates over all nodes owned by @p iDomain.  For each node, examines
+/// every other domain that also owns that node and records the node's
+/// *local* index (within @p iDomain) as a shared node with that neighbor.
+///
+/// The result is packed into a CSR-like DDMNeighbor structure:
+///   - neighborDomain[k]: the k-th neighboring domain ID (sorted by domain ID
+///     since std::map is used internally).
+///   - nodes[displacements[k] .. displacements[k+1]): the local node indices
+///     shared with neighborDomain[k], in sorted order (std::set).
+///   - displacements: prefix-sum offsets into the nodes array, with
+///     displacements[0] == 0.
+///
+/// @param iDomain    The domain for which to compute neighbor information.
+/// @param partition  The global partition containing node-domain associations.
+/// @return A DDMNeighbor describing all neighbor domains and shared nodes.
 DDMNeighbor getDDMNeighbor(int iDomain, DDMPartition const & partition) {
   DDMNeighbor neighbor;
   std::map<int, std::set<int>> neighborMap;
@@ -87,6 +143,10 @@ DDMNeighbor getDDMNeighbor(int iDomain, DDMPartition const & partition) {
 }
 
 namespace {
+  /// @brief Disjoint-set (union-find) with path compression.
+  ///
+  /// Used internally by reconstructDDMPartition() to merge local node indices
+  /// that refer to the same global node across domain boundaries.
   struct DSU {
     std::vector<int> parent;
     DSU(int n) : parent(n) {
@@ -106,6 +166,31 @@ namespace {
   };
 }
 
+/// @brief Reconstruct a DDMPartition from per-domain node counts and neighbor data.
+///
+/// Given only the number of nodes in each domain and the neighbor connectivity
+/// (which local nodes are shared between which domains), this function recovers
+/// a full DDMPartition with consistent global node IDs.
+///
+/// Algorithm:
+///   1. Assign each local node a unique linear index by concatenating domains
+///      (domain i's local node j gets index offsets[i] + j).
+///   2. For every pair of neighboring domains, use the DDMNeighbor data to
+///      identify which local nodes correspond to the same physical node, and
+///      merge them via union-find (DSU).  Each pair is processed only once
+///      (neighborID > i) to avoid double-merging.
+///   3. Flatten the DSU into contiguous global IDs (0, 1, 2, ...) by mapping
+///      each DSU root to a new sequential ID.
+///   4. Build the DDMPartition using the computed global IDs and normalize it.
+///
+/// @pre The shared nodes between any two neighboring domains must be listed in
+///      the same relative order in both DDMNeighbor structures (i.e., the k-th
+///      shared node from domain A's perspective corresponds to the k-th shared
+///      node from domain B's perspective).
+///
+/// @param nNodesPerDomain  Number of local nodes in each domain.
+/// @param neighbors        Neighbor information for each domain (one per domain).
+/// @return A fully populated and normalized DDMPartition.
 DDMPartition reconstructDDMPartition(
     std::vector<int> const & nNodesPerDomain,
     std::vector<DDMNeighbor> const & neighbors)
@@ -187,6 +272,7 @@ DDMPartition reconstructDDMPartition(
   return partition;
 }
 
+/// @brief Print the contents of a DDMNeighbor for debugging.
 void dump(DDMNeighbor const & neighbor, anyprint::indentation const & indent) {
   using namespace anyprint;
   print(indent, "neighborDomain: ", neighbor.neighborDomain);
@@ -194,6 +280,7 @@ void dump(DDMNeighbor const & neighbor, anyprint::indentation const & indent) {
   print(indent, "displacements: ", neighbor.displacements);
 }
 
+/// @brief Print the contents of a DDMPartition for debugging.
 void dump(DDMPartition const & partition, anyprint::indentation const & indent) {
   using namespace anyprint;
   print(indent, "nodesOfDomain:");
