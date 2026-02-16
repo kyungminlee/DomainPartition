@@ -4,6 +4,7 @@
 #include "DDMPartition.hh"
 #include "DDMExchange.hh"
 #include <random>
+#include <thread>
 #include "Expr.hh"
 
 using namespace anyprint;
@@ -99,18 +100,19 @@ void testNeighborExchange(MPI_Comm comm) {
     dump(neighbor, indentation(4));
   });
 
-  int nNode = partition.getNodeCount();
+  int nNodeGlobal = partition.getNodeCount();
   int nDomain = partition.getDomainCount();
 
   using T = Expr;
-  RealNodeValue<T> globalData(nNode);
+  RealNodeValue<T> globalData(nNodeGlobal);
 
-  for (int i = 0; i < nNode; ++i) {
-    globalData[i] = i;
+  for (int i = 0; i < nNodeGlobal; ++i) {
+    globalData[i] = i+1;
   }
   RealNodeValue<T> localData(partition.getNodeCount(mpi.rank()));
   for (int i = 0; i < localData.size(); ++i) {
-    localData[i] = globalData[partition.getNode(mpi.rank(), i)] + 100 * (mpi.rank() + 1);
+    localData[i] = globalData[partition.getNode(mpi.rank(), i)]
+                   + 100 * (mpi.rank() + 1);
   }
 
   mpi.barrier();
@@ -123,11 +125,55 @@ void testNeighborExchange(MPI_Comm comm) {
 }
 
 
+void testFullSynchronize(MPI_Comm comm) {
+  MPIHelper mpi(comm);
+
+  DDMPartition partition = makeTestPartition(mpi.size());
+
+  // mpi.syncrun([&]() {
+  //   print("- rank: ", mpi.rank());
+  //   print("  partition:");
+  //   dump(partition, indentation(4));
+  // });
+
+  int nNodeGlobal = partition.getNodeCount();
+
+  using T = Expr;
+  RealNodeValue<T> data(nNodeGlobal);
+
+  // Each rank sets its own domain's nodes to (globalNodeID + 1) * (rank + 1)
+  int myDomain = mpi.rank();
+  int myNodes = partition.getNodeCount(myDomain);
+  
+  for (int iNode = 0; iNode < nNodeGlobal ; ++iNode) {
+    data[iNode] = (myDomain + 1) * 100 + iNode;
+  }
+  
+
+  // for (int iLocal = 0; iLocal < myNodes; ++iLocal) {
+  //   int globalNode = partition.getNode(myDomain, iLocal);
+  //   data[globalNode] = (globalNode + 1) * (myDomain + 1);
+  // }
+
+  mpi.barrier();
+  mpi.print("Before sync: ", data);
+  mpi.barrier();
+
+  DDMMPISynchronizer<RealNodeValue<T>> sync;
+  sync.fullSynchronize(comm, data, partition);
+
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  mpi.barrier();
+  mpi.print("After sync: ", data);
+  mpi.barrier();
+}
+
 int main(int argc, char** argv) {
   MPI_Init(&argc, &argv);
 
   try {
-    testNeighborExchange(MPI_COMM_WORLD);
+    testFullSynchronize(MPI_COMM_WORLD);
   } catch(MPIError const & error) {
     std::cerr << "MPIError: " << error.what() << " (errorcode=" << error.code() << ")" << std::endl;
     MPI_Abort(MPI_COMM_WORLD, -1);

@@ -76,7 +76,7 @@ void DDMMPISynchronizer<RealNodeValue<T>>::fullSynchronize(
   std::vector<double> sendBuf(myNodes);
   for (int iLocal = 0; iLocal < myNodes; ++iLocal) {
     int globalNode = partition.getNode(myDomain, iLocal);
-    sendBuf[iLocal] = data[globalNode];
+    sendBuf[iLocal] = static_cast<double>(data[globalNode]);
   }
 
   // Gather local node data from all domains
@@ -85,16 +85,28 @@ void DDMMPISynchronizer<RealNodeValue<T>>::fullSynchronize(
   mpi.allgatherv(sendBuf.data(), sendBuf.size(), recvBuf, displs);
 
   // Update each local node by averaging across all domains that own it
-  for (int iLocal = 0; iLocal < myNodes; ++iLocal) {
-    int globalNode = partition.getNode(myDomain, iLocal);
-    auto const & domains = partition.getDomains(globalNode);
-    double sum = 0.0;
+
+
+  int nNodes = partition.getNodeCount();
+  for (int iNode = 0; iNode < nNodes; ++iNode) {
+    auto const & domains = partition.getDomains(iNode);
+    T sum = 0.0;
     for (int dom : domains) {
-      int localIdx = partition.getLocalNodeIndex(globalNode, dom);
+      int localIdx = partition.getLocalNodeIndex(iNode, dom);
       sum += recvBuf[displs[dom] + localIdx];
     }
-    data[globalNode] = sum / domains.size();
+    data[iNode] = sum / static_cast<int>(domains.size());
   }
+  // for (int iLocal = 0; iLocal < myNodes; ++iLocal) {
+  //   int globalNode = partition.getNode(myDomain, iLocal);
+  //   auto const & domains = partition.getDomains(globalNode);
+  //   T sum = 0.0;
+  //   for (int dom : domains) {
+  //     int localIdx = partition.getLocalNodeIndex(globalNode, dom);
+  //     sum += recvBuf[displs[dom] + localIdx];
+  //   }
+  //   data[globalNode] = sum / static_cast<int>(domains.size());
+  // }
 }
 
 
