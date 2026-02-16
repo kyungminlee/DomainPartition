@@ -39,9 +39,12 @@ public:
   Expr & operator/=(Expr const & rhs) { return *this = *this / rhs; }
 
   friend Expr operator+(Expr const & a, Expr const & b) {
+    if (isZeroLiteral(a._node)) return b;
+    if (isZeroLiteral(b._node)) return a;
     return Expr(a._value + b._value, ExprNode::binary(ExprNode::Kind::Add, a._node, b._node));
   }
   friend Expr operator-(Expr const & a, Expr const & b) {
+    if (isZeroLiteral(b._node)) return a;
     return Expr(a._value - b._value, ExprNode::binary(ExprNode::Kind::Sub, a._node, b._node));
   }
   friend Expr operator*(Expr const & a, Expr const & b) {
@@ -67,6 +70,10 @@ public:
 
 private:
   Expr(double v, std::shared_ptr<ExprNode> node) : _value(v), _node(std::move(node)) {}
+
+  static bool isZeroLiteral(std::shared_ptr<ExprNode> const & n) {
+    return n && n->kind == ExprNode::Kind::Literal && n->value == 0.0;
+  }
 
   static void printNode(std::ostream & os, std::shared_ptr<ExprNode> const & n) {
     if (!n) { os << "?"; return; }
