@@ -62,7 +62,7 @@ void exchange(
     sendReqs[i] = mpi.isend(&sendBuf[displacement], count, neighborID, 0);
   }
 
-  int myNodes = partition.getNodeCount(mpi.getRank());
+  int myNodes = partition.getNodeCount(mpi.rank());
   std::vector<double> outAgg(myNodes, 0.0);
   std::vector<int> outCount(myNodes, 0);
 
@@ -86,11 +86,11 @@ void exchange(
 void test_mpi(MPI_Comm comm) {
   MPIHelper mpi(comm);  
 
-  DDMPartition partition = makeTestPartition(mpi.getSize());
-  DDMNeighbor neighbor = getDDMNeighbor(mpi.getRank(), partition);
+  DDMPartition partition = makeTestPartition(mpi.size());
+  DDMNeighbor neighbor = getDDMNeighbor(mpi.rank(), partition);
 
   mpi.syncrun([&]() {
-    print("- rank: ", mpi.getRank());
+    print("- rank: ", mpi.rank());
     print("  partition:");
     dump(partition, indentation(4));
     print("  neighbor:");
@@ -108,9 +108,9 @@ void test_mpi(MPI_Comm comm) {
     // globalData[i] = dist(rng);
     globalData[i] = i;
   }
-  std::vector<double> localData(partition.getNodeCount(mpi.getRank()));
+  std::vector<double> localData(partition.getNodeCount(mpi.rank()));
   for (int i = 0; i < localData.size(); ++i) {
-    localData[i] = globalData[partition.getNode(mpi.getRank(), i)] + 100 * (mpi.getRank() + 1);
+    localData[i] = globalData[partition.getNode(mpi.rank(), i)] + 100 * (mpi.rank() + 1);
   }
 
   mpi.barrier();
