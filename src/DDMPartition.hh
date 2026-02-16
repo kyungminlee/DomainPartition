@@ -3,6 +3,8 @@
 #include <vector>
 #include "anyprint.hh"
 
+namespace NSPC_DDM {
+
 class DDMPartition {
 public:
   DDMPartition() = default;
@@ -44,5 +46,7 @@ DDMPartition reconstructDDMPartition(
     std::vector<int> const & nNodesPerDomain,
     std::vector<DDMNeighbor> const & neighbors);
 
-void dump(DDMNeighbor const & neighbor, anyprint::indentation const & indent);
-void dump(DDMPartition const & partition, anyprint::indentation const & indent);
+void dump(DDMNeighbor const & neighbor, anyprint::indentation const & indent=anyprint::indentation(0));
+void dump(DDMPartition const & partition, anyprint::indentation const & indent=anyprint::indentation(0));
+
+}

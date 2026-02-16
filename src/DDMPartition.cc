@@ -6,6 +6,8 @@
 #include <numeric>
 #include "anyprint.hh"
 
+namespace NSPC_DDM {
+
 DDMPartition::DDMPartition(int nNode, int nDomain)
   : _nodesOfDomain(nDomain)
   , _domainsOfNode(nNode)
@@ -185,14 +187,14 @@ DDMPartition reconstructDDMPartition(
   return partition;
 }
 
-void dump(DDMNeighbor const & neighbor, anyprint::indentation const & indent=anyprint::indentation(0)) {
+void dump(DDMNeighbor const & neighbor, anyprint::indentation const & indent) {
   using namespace anyprint;
   print(indent, "neighborDomain: ", neighbor.neighborDomain);
   print(indent, "nodes: ", neighbor.nodes);
   print(indent, "displacements: ", neighbor.displacements);
 }
 
-void dump(DDMPartition const & partition, anyprint::indentation const & indent=anyprint::indentation(0)) {
+void dump(DDMPartition const & partition, anyprint::indentation const & indent) {
   using namespace anyprint;
   print(indent, "nodesOfDomain:");
   for (int iDomain = 0; iDomain < partition.getDomainCount(); ++iDomain) {
@@ -204,4 +206,6 @@ void dump(DDMPartition const & partition, anyprint::indentation const & indent=a
     print(indent, "  node: ", iNode);
     print(indent, "  domains: ", partition.getDomains(iNode));
   }
+}
+
 }

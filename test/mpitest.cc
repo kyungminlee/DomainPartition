@@ -5,6 +5,7 @@
 #include <random>
 
 using namespace anyprint;
+using namespace NSPC_DDM;
 
 DDMPartition makeTestPartition(int nDomain) {
   int nNode = 4*nDomain;
@@ -73,12 +74,7 @@ void exchange(
     ++outCount[neighbor.nodes[i]];
   }
   for (int i = 0; i < myNodes; ++i) {
-    // outData[i] = (outData[i] + outAgg[i]) / (outCount[i] + 1);
-    if (outCount[i] > 0) {
-      outData[i] = outAgg[i] / outCount[i];
-    } else {
-      print("[", mpi.getRank(), "] why is outCount[", i, "] = ", outCount[i], " ?");
-    }
+    outData[i] = (inData[i] + outAgg[i]) / (outCount[i] + 1);
   }
   if (MPI_Waitall(sendReqs.size(), sendReqs.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS) {
     throw std::runtime_error("MPI_Waitall failed");
@@ -121,7 +117,7 @@ void test_mpi(MPI_Comm comm) {
 
   mpi.print("Starting exchange");
 
-  exchange(localData.data(), localData.data(), neighbor, comm);
+  exchange(localData.data(), localData.data(), partition, neighbor, comm);
 
   mpi.barrier();
   mpi.print("Finished exchange");

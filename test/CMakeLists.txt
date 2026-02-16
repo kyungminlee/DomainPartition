@@ -1,4 +1,3 @@
-find_package(MPI REQUIRED)
 
 
 add_executable(mpitest mpitest.cc)

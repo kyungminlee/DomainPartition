@@ -5,6 +5,8 @@
 
 #include "anyprint.hh"
 
+using namespace NSPC_DDM;
+
 DDMPartition createTestDDMPartition() {
   int nNode = 10;
   int nDomain = 3;

@@ -7,16 +7,33 @@
 template <typename T>
 struct MPITypeTrait;
 
-template <>
-struct MPITypeTrait<double> {
-  static MPI_Datatype datatype() { return MPI_DOUBLE; }
-};
+#define DEFINE_MPI_TYPE_TRAIT(CPP_TYPE, MPI_TYPE) \
+template <> \
+struct MPITypeTrait<CPP_TYPE> { \
+  static MPI_Datatype datatype() { return MPI_TYPE; } \
+}
 
-template <>
-struct MPITypeTrait<int> {
-  static MPI_Datatype datatype() { return MPI_INT; }
-};
+DEFINE_MPI_TYPE_TRAIT(double, MPI_DOUBLE);
+DEFINE_MPI_TYPE_TRAIT(int, MPI_INT);
+DEFINE_MPI_TYPE_TRAIT(unsigned int, MPI_UNSIGNED);
+DEFINE_MPI_TYPE_TRAIT(char, MPI_CHAR);
+DEFINE_MPI_TYPE_TRAIT(signed char, MPI_SIGNED_CHAR);
+DEFINE_MPI_TYPE_TRAIT(unsigned char, MPI_UNSIGNED_CHAR);
+DEFINE_MPI_TYPE_TRAIT(short, MPI_SHORT);
+DEFINE_MPI_TYPE_TRAIT(unsigned short, MPI_UNSIGNED_SHORT);
+DEFINE_MPI_TYPE_TRAIT(long, MPI_LONG);
+DEFINE_MPI_TYPE_TRAIT(unsigned long, MPI_UNSIGNED_LONG);
+DEFINE_MPI_TYPE_TRAIT(long long, MPI_LONG_LONG);
+DEFINE_MPI_TYPE_TRAIT(unsigned long long, MPI_UNSIGNED_LONG_LONG);
+DEFINE_MPI_TYPE_TRAIT(float, MPI_FLOAT);
+DEFINE_MPI_TYPE_TRAIT(long double, MPI_LONG_DOUBLE);
+DEFINE_MPI_TYPE_TRAIT(bool, MPI_CXX_BOOL);
 
+#undef DEFINE_MPI_TYPE_TRAIT
+
+class MPIError : public std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
 
 class MPIHelper {
 public:
@@ -24,10 +41,10 @@ public:
   : _comm(comm) {
 
     if (MPI_Comm_size(comm, &_size) != MPI_SUCCESS) {
-      throw std::runtime_error("MPI_Comm_size failed");
+      throw MPIError("MPI_Comm_size failed");
     }
     if (MPI_Comm_rank(comm, &_rank) != MPI_SUCCESS) {
-      throw std::runtime_error("MPI_Comm_rank failed");
+      throw MPIError("MPI_Comm_rank failed");
     }
   }
   
