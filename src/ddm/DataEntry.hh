@@ -4,12 +4,13 @@
 #include "anyprint.hh"
 
 // replacement
-class RealNodeScalar {
+template <typename T>
+class RealNodeValue {
 public:
-  RealNodeScalar(int nNode): _data(nNode) {}
+  RealNodeValue(int nNode): _data(nNode) {}
 
-  double & operator[](int i) { return _data.at(i); }
-  double operator[](int i) const { return _data.at(i); }
+  T & operator[](int i) { return _data.at(i); }
+  T operator[](int i) const { return _data.at(i); }
   
   std::size_t size() const { return _data.size(); }
 
@@ -18,13 +19,21 @@ public:
   decltype(auto) begin() { return _data.begin(); }
   decltype(auto) end() { return _data.end(); }
 
-  std::vector<double> _data;
+  std::vector<T> _data;
 };
 
-template <>
-class anyprint::writer<RealNodeScalar> {
+using RealNodeScalar = RealNodeValue<double>;
+
+
+
+
+
+
+
+template <typename T>
+class anyprint::writer<RealNodeValue<T>> {
 public:
-  static void write(std::ostream& os, const RealNodeScalar & vec) {
+  static void write(std::ostream& os, const RealNodeValue<T> & vec) {
     os << "[";
     write_iterable(vec.begin(), vec.end(), os);
     os << "]";

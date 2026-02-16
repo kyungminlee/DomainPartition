@@ -1,6 +1,6 @@
 add_library(ddmpartition
   ddm/DDMPartition.cc
-  ddm/DDMExchange.cc
+  # ddm/DDMExchange.cc
 )
 target_include_directories(ddmpartition PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/util

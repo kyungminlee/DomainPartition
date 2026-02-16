@@ -4,7 +4,6 @@
 #include <vector>
 #include <map>
 #include <tuple>
-#include <string>
 
 namespace anyprint {
 
@@ -20,7 +19,6 @@ namespace anyprint {
   void write(std::ostream& os, const Ts& ... values) {
     (writer<Ts>::write(os, values), ...);
   }
-
 
   template <typename Iter>
   void write_iterable(Iter begin, Iter last, std::ostream & os) {

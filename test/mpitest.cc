@@ -4,6 +4,7 @@
 #include "DDMPartition.hh"
 #include "DDMExchange.hh"
 #include <random>
+#include "Expr.hh"
 
 using namespace anyprint;
 using namespace NSPC_DDM;
@@ -84,7 +85,7 @@ DDMPartition makeTestPartition(int nDomain) {
 
 
 
-void test_mpi(MPI_Comm comm) {
+void testNeighborExchange(MPI_Comm comm) {
   MPIHelper mpi(comm);  
 
   DDMPartition partition = makeTestPartition(mpi.size());
@@ -101,21 +102,20 @@ void test_mpi(MPI_Comm comm) {
   int nNode = partition.getNodeCount();
   int nDomain = partition.getDomainCount();
 
-  RealNodeScalar globalData(nNode);
+  using T = Expr;
+  RealNodeValue<T> globalData(nNode);
 
-  // std::mt19937 rng(0);
-  // std::uniform_real_distribution<double> dist(0.0, 1.0);
   for (int i = 0; i < nNode; ++i) {
     globalData[i] = i;
   }
-  RealNodeScalar localData(partition.getNodeCount(mpi.rank()));
+  RealNodeValue<T> localData(partition.getNodeCount(mpi.rank()));
   for (int i = 0; i < localData.size(); ++i) {
     localData[i] = globalData[partition.getNode(mpi.rank(), i)] + 100 * (mpi.rank() + 1);
   }
 
   mpi.barrier();
   mpi.print("Starting exchange");
-  DDMMPISynchronizer<RealNodeScalar> sync;
+  DDMMPISynchronizer<RealNodeValue<T>> sync;
   sync.neighborExchange(comm, localData, localData, partition, neighbor);
   mpi.barrier();
   mpi.print("Finished exchange");
@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
   MPI_Init(&argc, &argv);
 
   try {
-    test_mpi(MPI_COMM_WORLD);
+    testNeighborExchange(MPI_COMM_WORLD);
   } catch(MPIError const & error) {
     std::cerr << "MPIError: " << error.what() << " (errorcode=" << error.code() << ")" << std::endl;
     MPI_Abort(MPI_COMM_WORLD, -1);
