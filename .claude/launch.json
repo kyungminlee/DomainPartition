@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["-m", "http.server", "8000", "--directory", "site"],
+      "port": 8000
+    },
+    {
+      "name": "scraper",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["run_scrapers.py"],
+      "port": 8001
+    }
+  ]
+}
